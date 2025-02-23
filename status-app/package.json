@@ -4,7 +4,6 @@
   "description": "Your app description",
   "author": "Your Name",
   "private": true,
-  "main": "public/electron.js",
   "dependencies": {
     "@azure/msal-browser": "^4.4.0",
     "@azure/msal-react": "^3.0.5",
@@ -23,9 +22,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "electron": "electron .",
-    "dist": "electron-builder"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
@@ -44,30 +41,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "build": {
-    "appId": "com.example.statusapp",
-    "productName": "StatusApp",
-    "files": [
-      "build/**/*",
-      "public/electron.js",
-      "public/preload.js",
-      "assets/**/*"
-    ],
-    "directories": {
-      "buildResources": "assets"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
-    },
-    "mac": {
-      "target": "dmg",
-      "icon": "assets/icon.icns"
-    }
-  },
-  "devDependencies": {
-    "electron": "^34.2.0",
-    "electron-builder": "^25.1.8"
   }
 }
