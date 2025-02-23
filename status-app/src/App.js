@@ -2,6 +2,7 @@ import React from "react";
 import { useMsal, AuthenticatedTemplate, UnauthenticatedTemplate } from "@azure/msal-react";
 import MainAppContent from "./components/MainAppContent";
 import Taskbar from "./components/Taskbar"; // Import Taskbar
+import Login from "./components/Login"; // Import Login
 import { loginRequest } from './authConfig'; // Import loginRequest
 import "./App.css";
 
@@ -21,8 +22,7 @@ const App = () => {
         <MainAppContent />
       </AuthenticatedTemplate>
       <UnauthenticatedTemplate>
-        <p>You are not logged in. Please log in.</p>
-        <button onClick={handleLogin}>Login</button>
+        <Login />
       </UnauthenticatedTemplate>
       <Taskbar /> {/* Add Taskbar */}
     </div>
