@@ -4,13 +4,14 @@ const path = require('path');
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 300, // Adjust width to fit controls
+    height: 500, // Adjust height to fit controls
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true,
     },
     frame: false, // Disable window frame
+    resizable: true, // Allow window to be resizable
   });
 
   mainWindow.loadURL('http://localhost:3000'); // Load your React app
