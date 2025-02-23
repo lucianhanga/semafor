@@ -1,0 +1,23 @@
+.status-selector {
+    text-align: center;
+    margin-top: 20px;
+  }
+  
+  .status-button {
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 5px;
+    margin: 5px;
+  }
+  
+  .absent { background-color: red; color: white; }
+  .lead { background-color: orange; color: black; }
+  .busy { background-color: yellow; color: black; }
+  .available { background-color: green; color: white; }
+  
+  .active {
+    border: 3px solid black;
+  }
+  
