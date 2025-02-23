@@ -15,11 +15,13 @@ const App = () => {
 
   return (
     <div className="container">
+      <div className="draggable"> {/* Add draggable area */}
+        <h1>Status Board</h1>
+      </div>
       <AuthenticatedTemplate>
         <MainAppContent />
       </AuthenticatedTemplate>
       <UnauthenticatedTemplate>
-        <h1>Status Board</h1>
         <p>You are not logged in. Please log in.</p>
         <button onClick={handleLogin}>Login</button>
       </UnauthenticatedTemplate>
