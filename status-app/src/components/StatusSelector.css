@@ -4,18 +4,20 @@
   }
   
   .status-selector h2 {
-    font-size: 14px; /* Reduce the font size */
-    margin-bottom: 10px; /* Adjust margin if needed */
+    font-size: 12px; /* Reduce the font size */
+    margin-bottom: 8px; /* Adjust margin if needed */
   }
   
   .status-button {
-    padding: 3px 6px; /* Reduce padding */
+    padding: 2px 4px; /* Reduce padding */
     border: none;
     cursor: pointer;
     font-weight: bold;
     border-radius: 5px;
-    margin: 3px; /* Reduce margin */
+    margin: 2px; /* Reduce margin */
     font-size: 10px; /* Reduce font size */
+    height: 24px; /* Reduce height */
+    line-height: 20px; /* Adjust line height */
   }
   
   .status-button.active {
@@ -29,4 +31,15 @@
   
   .active {
     border: 3px solid black;
+  }
+
+  .status-display {
+    margin-top: 8px; /* Adjust margin */
+    padding: 8px; /* Reduce padding */
+    color: white;
+    text-align: center;
+    border-radius: 4px;
+    font-size: 12px; /* Reduce font size */
+    height: 24px; /* Reduce height */
+    line-height: 20px; /* Adjust line height */
   }

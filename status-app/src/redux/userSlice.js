@@ -6,6 +6,12 @@ const initialState = {
     { name: "Antonio", status: "lead" },
     { name: "Giada", status: "absent" },
     { name: "Marco", status: "busy" },
+    { name: "Luca", status: "available" },
+    { name: "Sara", status: "lead" },
+    { name: "Francesco", status: "absent" },
+    { name: "Elena", status: "busy" },
+    { name: "Davide", status: "available" },
+    { name: "Martina", status: "lead" },
   ],
   currentUser: { name: "You", status: "available" },
 };

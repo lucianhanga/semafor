@@ -1,34 +1,55 @@
 .user-list {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .user {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 200px;
-    padding: 10px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-    margin-bottom: 10px;
-  }
-  
-  .name {
-    font-weight: bold;
-  }
-  
-  .status {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid black;
-  }
-  
-  .absent { background-color: red; }
-  .lead { background-color: orange; }
-  .busy { background-color: yellow; }
-  .available { background-color: green; }
-  
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center the list horizontally */
+  justify-content: center; /* Center the list vertically */
+  height: 100%; /* Ensure the list takes the full height of the container */
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 200px;
+  padding: 4px 8px; /* Reduce padding */
+  background: white;
+  border-radius: 8px;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+  margin-bottom: 10px;
+  font-size: 12px; /* Reduce font size */
+  height: 24px; /* Reduce height */
+  line-height: 20px; /* Adjust line height */
+}
+
+.name {
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.status {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid black;
+}
+
+.absent { background-color: red; }
+.lead { background-color: orange; }
+.busy { background-color: yellow; }
+.available { background-color: green; }
+
+.status.available {
+  background-color: #4caf50;
+}
+
+.status.lead {
+  background-color: #ffa500;
+}
+
+.status.absent {
+  background-color: #ff4d4d;
+}
+
+.status.busy {
+  background-color: #ffcc00;
+}
