@@ -1,4 +1,4 @@
-// filepath: /home/lh/lgit/semafor/status-app/main.js
+// filepath: /home/lh/lgit/semafor/status-app/public/main.js
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 

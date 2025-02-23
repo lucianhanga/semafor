@@ -1,8 +1,10 @@
 {
   "name": "status-app",
   "version": "1.0.0",
+  "description": "Your app description",
+  "author": "Your Name",
   "private": true,
-  "main": "main.js",
+  "main": "public/electron.js",
   "dependencies": {
     "@azure/msal-browser": "^4.4.0",
     "@azure/msal-react": "^3.0.5",
@@ -48,8 +50,9 @@
     "productName": "StatusApp",
     "files": [
       "build/**/*",
-      "main.js",
-      "preload.js"
+      "public/electron.js",
+      "public/preload.js",
+      "assets/**/*"
     ],
     "directories": {
       "buildResources": "assets"
