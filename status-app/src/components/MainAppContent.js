@@ -1,7 +1,7 @@
 // MainAppContent.js
 import React from 'react';
-import UserList from './components/UserList';
-import StatusSelector from './components/StatusSelector';
+import UserList from './UserList';
+import StatusSelector from './StatusSelector';
 
 const MainAppContent = () => (
   <div>
