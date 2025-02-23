@@ -1,0 +1,12 @@
+/* filepath: /home/lh/lgit/semafor/status-app/src/Taskbar.css */
+.taskbar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 3px 0; /* Further reduce padding */
+  height: 20px; /* Keep the reduced height */
+  font-size: 10px; /* Further reduce font size */
+}

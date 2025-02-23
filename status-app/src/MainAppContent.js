@@ -5,10 +5,8 @@ import StatusSelector from './components/StatusSelector';
 
 const MainAppContent = () => (
   <div>
-    <h1>Status Board</h1>
     <UserList />
     <StatusSelector />
-    <p>You are logged in!</p>
   </div>
 );
 

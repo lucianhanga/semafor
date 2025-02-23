@@ -3,13 +3,23 @@
     margin-top: 20px;
   }
   
+  .status-selector h2 {
+    font-size: 14px; /* Reduce the font size */
+    margin-bottom: 10px; /* Adjust margin if needed */
+  }
+  
   .status-button {
-    padding: 10px;
+    padding: 3px 6px; /* Reduce padding */
     border: none;
     cursor: pointer;
     font-weight: bold;
     border-radius: 5px;
-    margin: 5px;
+    margin: 3px; /* Reduce margin */
+    font-size: 10px; /* Reduce font size */
+  }
+  
+  .status-button.active {
+    font-weight: bold;
   }
   
   .absent { background-color: red; color: white; }
@@ -20,4 +30,3 @@
   .active {
     border: 3px solid black;
   }
-  
