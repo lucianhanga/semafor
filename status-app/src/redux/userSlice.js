@@ -31,7 +31,7 @@ export const updateUserStatus = createAsyncThunk('users/updateUserStatus', async
   });
   const data = await response.json();
   console.log("User status updated:", data);
-  return updatedUser;
+  return data.users; // Return the updated list of users
 });
 
 // Create the user slice
@@ -69,7 +69,8 @@ const userSlice = createSlice({
       .addCase(updateUserStatus.fulfilled, (state, action) => {
         console.log("Updating user status: succeeded");
         state.status = 'succeeded';
-        state.currentUser = action.payload;
+        state.users = action.payload; // Update the users list
+        state.currentUser = state.users.find(user => user.id === state.currentUser.id) || state.currentUser;
       })
       .addCase(updateUserStatus.rejected, (state, action) => {
         console.log("Updating user status: failed", action.error.message);
