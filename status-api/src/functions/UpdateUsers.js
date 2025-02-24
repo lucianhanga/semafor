@@ -1,6 +1,8 @@
 const { app } = require('@azure/functions');
 const { ConfidentialClientApplication } = require("@azure/msal-node");
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const fs = require('fs').promises;
+const path = require('path');
 
 const msalConfig = {
   auth: {
@@ -11,6 +13,7 @@ const msalConfig = {
 };
 
 const cca = new ConfidentialClientApplication(msalConfig);
+const usersFilePath = path.join(__dirname, 'users.json');
 
 app.http('UpdateUsers', {
   methods: ['GET', 'POST'],
@@ -39,26 +42,49 @@ app.http('UpdateUsers', {
       context.log("Users fetched successfully.");
       context.log("Response from Microsoft Graph:", JSON.stringify(data, null, 2));
 
-      const users = data.value.map(user => ({
+      const fetchedUsers = data.value.map(user => ({
+        id: user.id,
         name: user.displayName,
-        status: "available", // Default status, you can customize this
+        status: "available", // Default status
       }));
 
-      // Example statuses for demonstration purposes
-      const statuses = ["available", "lead", "absent", "busy"];
-      users.forEach((user, index) => {
-        user.status = statuses[index % statuses.length];
+      let storedUsers = [];
+      try {
+        const usersFileContent = await fs.readFile(usersFilePath, 'utf8');
+        storedUsers = JSON.parse(usersFileContent);
+      } catch (err) {
+        context.log("No existing users file found, creating a new one.");
+      }
+
+      const updatedUsers = [...storedUsers];
+
+      // Add new users
+      fetchedUsers.forEach(fetchedUser => {
+        if (!storedUsers.some(storedUser => storedUser.id === fetchedUser.id)) {
+          updatedUsers.push(fetchedUser);
+        }
       });
 
-      context.log("Users processed successfully.");
+      // Remove missing users
+      storedUsers.forEach(storedUser => {
+        if (!fetchedUsers.some(fetchedUser => fetchedUser.id === storedUser.id)) {
+          const index = updatedUsers.findIndex(user => user.id === storedUser.id);
+          if (index !== -1) {
+            updatedUsers.splice(index, 1);
+          }
+        }
+      });
 
-      // log the users
-      context.log("Users:", JSON.stringify(users, null, 2));
+      await fs.writeFile(usersFilePath, JSON.stringify(updatedUsers, null, 2));
+      context.log("Users file updated successfully.");
+
+      context.log("Users processed successfully.");
+      context.log("Users:", JSON.stringify(updatedUsers, null, 2));
 
       context.log("Response set successfully.");
       return {
         status: 200,
-        body: JSON.stringify({ users }),
+        body: JSON.stringify({ users: updatedUsers }),
         headers: { "Content-Type": "application/json" }
       };
     } catch (error) {
