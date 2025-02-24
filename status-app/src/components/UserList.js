@@ -18,7 +18,7 @@ const UserList = () => {
     // Set up an interval to fetch users every minute
     const intervalId = setInterval(() => {
       dispatch(fetchUsers());
-    }, 60000); // 60000 milliseconds = 1 minute
+    }, 10000); // 10000 milliseconds = 10 secunde
 
     // Clean up the interval on component unmount
     return () => clearInterval(intervalId);
