@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers } from "../redux/userSlice";
+import UpdateButton from "./UpdateButton";
 import "./UserList.css";
 
 const UserList = () => {
@@ -24,18 +25,12 @@ const UserList = () => {
     return () => clearInterval(intervalId);
   }, [userStatus, dispatch]);
 
-  const handleUpdateNow = () => {
-    dispatch(fetchUsers());
-  };
-
   console.log("User status:", userStatus);
   console.log("Users:", users);
 
   return (
     <div className="user-list">
-      <button className="update-now-button" onClick={handleUpdateNow}>
-        &#x21bb; {/* Unicode character for a refresh symbol */}
-      </button>
+      <UpdateButton />
       {userStatus === 'failed' ? (
         <div className="status-bar">
           <div>Error: {error}</div>
