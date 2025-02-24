@@ -28,21 +28,28 @@ const hashUsers = (users) => {
 };
 
 // Create an async thunk to fetch users from the API
-export const fetchUsers = createAsyncThunk('users/fetchUsers', async (_, { getState }) => {
+export const fetchUsers = createAsyncThunk('users/fetchUsers', async (_, { getState, rejectWithValue }) => {
   console.log("Fetching users from API...");
-  const response = await fetch(`${API_BASE_URL}/UpdateUsers`);
-  const data = await response.json();
-  console.log("Users fetched from API:", data.users);
+  try {
+    const response = await fetch(`${API_BASE_URL}/UpdateUsers`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch users');
+    }
+    const data = await response.json();
+    console.log("Users fetched from API:", data.users);
 
-  const currentUsersHash = getState().users.usersHash;
-  const newUsersHash = hashUsers(data.users);
-  console.log("Current users hash:", currentUsersHash);
-  console.log("New users hash:", newUsersHash);
+    const currentUsersHash = getState().users.usersHash;
+    const newUsersHash = hashUsers(data.users);
+    console.log("Current users hash:", currentUsersHash);
+    console.log("New users hash:", newUsersHash);
 
-  if (currentUsersHash !== newUsersHash) {
-    return { users: data.users, usersHash: newUsersHash }; // Return the updated list of users and the new hash
-  } else {
-    return { users: getState().users.users, usersHash: currentUsersHash }; // Return the current list of users and the current hash if no changes
+    if (currentUsersHash !== newUsersHash) {
+      return { users: data.users, usersHash: newUsersHash }; // Return the updated list of users and the new hash
+    } else {
+      return { users: getState().users.users, usersHash: currentUsersHash }; // Return the current list of users and the current hash if no changes
+    }
+  } catch (error) {
+    return rejectWithValue(error.message);
   }
 });
 
@@ -88,9 +95,10 @@ const userSlice = createSlice({
         state.usersHash = action.payload.usersHash;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
-        console.log("Fetching users: failed", action.error.message);
+        console.log("Fetching users: failed", action.payload);
         state.status = 'failed';
-        state.error = action.error.message;
+        state.error = action.payload;
+        state.users = []; // Clear the user list on error
       })
       .addCase(updateUserStatus.pending, (state) => {
         console.log("Updating user status: pending");

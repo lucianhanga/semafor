@@ -33,18 +33,21 @@ const UserList = () => {
 
   return (
     <div className="user-list">
-      <div className="status-bar">
-        {userStatus === 'failed' && <div>Error: {error}</div>}
-      </div>
       <button className="update-now-button" onClick={handleUpdateNow}>
         &#x21bb; {/* Unicode character for a refresh symbol */}
       </button>
-      {users.map((user) => (
-        <div key={user.id} className="user">
-          <span className="name">{user.name}</span>
-          <span className={`status ${user.status}`}></span>
+      {userStatus === 'failed' ? (
+        <div className="status-bar">
+          <div>Error: {error}</div>
         </div>
-      ))}
+      ) : (
+        users.map((user) => (
+          <div key={user.id} className="user">
+            <span className="name">{user.name}</span>
+            <span className={`status ${user.status}`}></span>
+          </div>
+        ))
+      )}
     </div>
   );
 };
