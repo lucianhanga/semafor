@@ -85,14 +85,20 @@ app.http('UpdateUsers', {
       return {
         status: 200,
         body: JSON.stringify({ users: updatedUsers }),
-        headers: { "Content-Type": "application/json" }
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*", // Add CORS header
+        }
       };
     } catch (error) {
       context.log("Error occurred:", error.message);
       return {
-        status: 500,
-        body: JSON.stringify({ error: error.message }),
-        headers: { "Content-Type": "application/json" }
+        return: 500,
+        body: JSON.stringify({ errory: error.message }),
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*", // Add CORS header
+        }
       };
     }
   }

@@ -1,21 +1,23 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
+// Define the initial state
 const initialState = {
-  users: [
-    { name: "Alessia", status: "available" },
-    { name: "Antonio", status: "lead" },
-    { name: "Giada", status: "absent" },
-    { name: "Marco", status: "busy" },
-    { name: "Luca", status: "available" },
-    { name: "Sara", status: "lead" },
-    { name: "Francesco", status: "absent" },
-    { name: "Elena", status: "busy" },
-    { name: "Davide", status: "available" },
-    { name: "Martina", status: "lead" },
-  ],
+  users: [],
   currentUser: { name: "You", status: "available" },
+  status: 'idle',
+  error: null
 };
 
+// Create an async thunk to fetch users from the API
+export const fetchUsers = createAsyncThunk('users/fetchUsers', async () => {
+  console.log("Fetching users from API...");
+  const response = await fetch('http://localhost:7071/api/UpdateUsers');
+  const data = await response.json();
+  console.log("Users fetched from API:", data.users);
+  return data.users;
+});
+
+// Create the user slice
 const userSlice = createSlice({
   name: "users",
   initialState,
@@ -24,6 +26,23 @@ const userSlice = createSlice({
       state.currentUser.status = action.payload;
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUsers.pending, (state) => {
+        console.log("Fetching users: pending");
+        state.status = 'loading';
+      })
+      .addCase(fetchUsers.fulfilled, (state, action) => {
+        console.log("Fetching users: succeeded");
+        state.status = 'succeeded';
+        state.users = action.payload;
+      })
+      .addCase(fetchUsers.rejected, (state, action) => {
+        console.log("Fetching users: failed", action.error.message);
+        state.status = 'failed';
+        state.error = action.error.message;
+      });
+  }
 });
 
 export const { setStatus } = userSlice.actions;
