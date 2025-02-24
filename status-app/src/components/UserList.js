@@ -10,9 +10,18 @@ const UserList = () => {
   const error = useSelector((state) => state.users.error);
 
   useEffect(() => {
+    // Fetch users initially
     if (userStatus === 'idle') {
       dispatch(fetchUsers());
     }
+
+    // Set up an interval to fetch users every minute
+    const intervalId = setInterval(() => {
+      dispatch(fetchUsers());
+    }, 60000); // 60000 milliseconds = 1 minute
+
+    // Clean up the interval on component unmount
+    return () => clearInterval(intervalId);
   }, [userStatus, dispatch]);
 
   if (userStatus === 'loading') {

@@ -7,7 +7,8 @@ import { loginRequest } from './authConfig'; // Import loginRequest
 import "./App.css";
 
 const App = () => {
-  const { instance } = useMsal();
+  const { instance, accounts } = useMsal();
+  const account = accounts[0];
 
   const handleLogin = () => {
     instance.loginPopup(loginRequest).catch(e => {
@@ -19,7 +20,10 @@ const App = () => {
     <div className="container">
       <div className="draggable"></div> {/* Add draggable area */}
       <AuthenticatedTemplate>
-        <MainAppContent />
+        <div>
+          <h2>Welcome, {account && account.name}!</h2>
+          <MainAppContent />
+        </div>
       </AuthenticatedTemplate>
       <UnauthenticatedTemplate>
         <Login />
