@@ -170,3 +170,4 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 status-api/src/functions/users.json
+status-app/package-lock.json
