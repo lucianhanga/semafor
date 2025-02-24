@@ -6,6 +6,15 @@
   height: 100%; /* Ensure the list takes the full height of the container */
 }
 
+.status-bar {
+  margin-bottom: 10px;
+  padding: 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  text-align: center;
+}
+
 .update-now-button {
   background-color: #007bff;
   color: white;

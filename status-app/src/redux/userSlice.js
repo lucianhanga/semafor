@@ -5,19 +5,45 @@ const initialState = {
   users: [],
   currentUser: { id: "", name: "", status: "available" },
   status: 'idle',
-  error: null
+  error: null,
+  usersHash: null // Add a field to store the hash of the users list
 };
 
 // Get the API base URL from environment variables
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
+// Create a hash function for the users list
+const hashCode = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+};
+
+const hashUsers = (users) => {
+  return hashCode(JSON.stringify(users));
+};
+
 // Create an async thunk to fetch users from the API
-export const fetchUsers = createAsyncThunk('users/fetchUsers', async () => {
+export const fetchUsers = createAsyncThunk('users/fetchUsers', async (_, { getState }) => {
   console.log("Fetching users from API...");
   const response = await fetch(`${API_BASE_URL}/UpdateUsers`);
   const data = await response.json();
   console.log("Users fetched from API:", data.users);
-  return data.users;
+
+  const currentUsersHash = getState().users.usersHash;
+  const newUsersHash = hashUsers(data.users);
+  console.log("Current users hash:", currentUsersHash);
+  console.log("New users hash:", newUsersHash);
+
+  if (currentUsersHash !== newUsersHash) {
+    return { users: data.users, usersHash: newUsersHash }; // Return the updated list of users and the new hash
+  } else {
+    return { users: getState().users.users, usersHash: currentUsersHash }; // Return the current list of users and the current hash if no changes
+  }
 });
 
 // Create an async thunk to update the user status
@@ -58,7 +84,8 @@ const userSlice = createSlice({
       .addCase(fetchUsers.fulfilled, (state, action) => {
         console.log("Fetching users: succeeded");
         state.status = 'succeeded';
-        state.users = action.payload;
+        state.users = action.payload.users;
+        state.usersHash = action.payload.usersHash;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         console.log("Fetching users: failed", action.error.message);

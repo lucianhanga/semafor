@@ -66,12 +66,6 @@ const App = () => {
     });
   };
 
-  const handleLogout = () => {
-    instance.logoutPopup().catch(e => {
-      console.error(e);
-    });
-  };
-
   return (
     <div className="container">
       <div className="draggable"></div> {/* Add draggable area */}
@@ -79,14 +73,12 @@ const App = () => {
         {isAuthorized ? (
           <div>
             <h2>Welcome, {account && account.name}!</h2>
-            <button onClick={handleLogout}>Logout</button> {/* Add Logout button */}
             <MainAppContent />
           </div>
         ) : (
           <div>
             <h2>Not Authorized</h2>
             <p>You do not have access to this application.</p>
-            <button onClick={handleLogout}>Logout</button> {/* Add Logout button */}
           </div>
         )}
       </AuthenticatedTemplate>

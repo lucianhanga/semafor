@@ -1,12 +1,28 @@
 /* filepath: /home/lh/lgit/semafor/status-app/src/components/Taskbar.css */
 .taskbar {
+  padding: 5px; /* Reduced padding */
+  background-color: #f0f0f0;
+  border-top: 1px solid #ccc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   position: fixed;
   bottom: 0;
   width: 100%;
-  background-color: #333;
+  z-index: 1000;
+  margin-left: -10px;
+}
+
+.logout-button {
+  padding: 5px 10px;
+  background-color: #0078d4;
   color: white;
-  text-align: center;
-  padding: 3px 0; /* Further reduce padding */
-  height: 20px; /* Keep the reduced height */
-  font-size: 10px; /* Further reduce font size */
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 20px; /* Shift the button 10 pixels to the left */
+}
+
+.logout-button:hover {
+  background-color: #005a9e;
 }

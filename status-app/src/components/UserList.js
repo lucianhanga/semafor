@@ -18,7 +18,7 @@ const UserList = () => {
     // Set up an interval to fetch users every minute
     const intervalId = setInterval(() => {
       dispatch(fetchUsers());
-    }, 10000); // 10000 milliseconds = 10 secunde
+    }, 10000); // 10000 milliseconds = 10 seconds
 
     // Clean up the interval on component unmount
     return () => clearInterval(intervalId);
@@ -28,16 +28,14 @@ const UserList = () => {
     dispatch(fetchUsers());
   };
 
-  if (userStatus === 'loading') {
-    return <div>Loading...</div>;
-  }
-
-  if (userStatus === 'failed') {
-    return <div>Error: {error}</div>;
-  }
+  console.log("User status:", userStatus);
+  console.log("Users:", users);
 
   return (
     <div className="user-list">
+      <div className="status-bar">
+        {userStatus === 'failed' && <div>Error: {error}</div>}
+      </div>
       <button className="update-now-button" onClick={handleUpdateNow}>
         &#x21bb; {/* Unicode character for a refresh symbol */}
       </button>
