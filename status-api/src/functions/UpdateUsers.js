@@ -94,7 +94,7 @@ app.http('UpdateUsers', {
       const fetchedUsers = data.value.map(user => ({
         id: user.id,
         name: user.displayName,
-        status: "available", // Default status
+        status: "absent", // Default status set to "absent"
       }));
 
       let storedUsers = [];

@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers } from "../redux/userSlice";
 import UpdateButton from "./UpdateButton";
+import StatusBar from "./StatusBar";
 import "./UserList.css";
 
 const UserList = () => {
@@ -31,18 +32,13 @@ const UserList = () => {
   return (
     <div className="user-list">
       <UpdateButton />
-      {userStatus === 'failed' ? (
-        <div className="status-bar">
-          <div>Error: {error}</div>
+      <StatusBar />
+      {userStatus !== 'failed' && users.map((user) => (
+        <div key={user.id} className="user">
+          <span className="name">{user.name}</span>
+          <span className={`status ${user.status}`}></span>
         </div>
-      ) : (
-        users.map((user) => (
-          <div key={user.id} className="user">
-            <span className="name">{user.name}</span>
-            <span className={`status ${user.status}`}></span>
-          </div>
-        ))
-      )}
+      ))}
     </div>
   );
 };
