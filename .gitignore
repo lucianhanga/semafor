@@ -171,3 +171,4 @@ cython_debug/
 .pypirc
 status-api/src/functions/users.json
 status-app/package-lock.json
+status-api/src/functions/users.json
