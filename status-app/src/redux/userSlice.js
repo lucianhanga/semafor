@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 // Define the initial state
 const initialState = {
   users: [],
-  currentUser: { name: "You", status: "available" },
+  currentUser: { id: "", name: "", status: "available" },
   status: 'idle',
   error: null
 };
@@ -17,11 +17,31 @@ export const fetchUsers = createAsyncThunk('users/fetchUsers', async () => {
   return data.users;
 });
 
+// Create an async thunk to update the user status
+export const updateUserStatus = createAsyncThunk('users/updateUserStatus', async (status, { getState }) => {
+  const { currentUser } = getState().users;
+  const updatedUser = { ...currentUser, status };
+  console.log("Updating user status:", updatedUser);
+  const response = await fetch('http://localhost:7071/api/UpdateState', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(updatedUser)
+  });
+  const data = await response.json();
+  console.log("User status updated:", data);
+  return updatedUser;
+});
+
 // Create the user slice
 const userSlice = createSlice({
   name: "users",
   initialState,
   reducers: {
+    setCurrentUser: (state, action) => {
+      state.currentUser = action.payload;
+    },
     setStatus: (state, action) => {
       state.currentUser.status = action.payload;
     },
@@ -41,9 +61,23 @@ const userSlice = createSlice({
         console.log("Fetching users: failed", action.error.message);
         state.status = 'failed';
         state.error = action.error.message;
+      })
+      .addCase(updateUserStatus.pending, (state) => {
+        console.log("Updating user status: pending");
+        state.status = 'loading';
+      })
+      .addCase(updateUserStatus.fulfilled, (state, action) => {
+        console.log("Updating user status: succeeded");
+        state.status = 'succeeded';
+        state.currentUser = action.payload;
+      })
+      .addCase(updateUserStatus.rejected, (state, action) => {
+        console.log("Updating user status: failed", action.error.message);
+        state.status = 'failed';
+        state.error = action.error.message;
       });
   }
 });
 
-export const { setStatus } = userSlice.actions;
+export const { setCurrentUser, setStatus } = userSlice.actions;
 export default userSlice.reducer;
