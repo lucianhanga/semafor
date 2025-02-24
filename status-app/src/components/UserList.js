@@ -24,6 +24,10 @@ const UserList = () => {
     return () => clearInterval(intervalId);
   }, [userStatus, dispatch]);
 
+  const handleUpdateNow = () => {
+    dispatch(fetchUsers());
+  };
+
   if (userStatus === 'loading') {
     return <div>Loading...</div>;
   }
@@ -34,8 +38,11 @@ const UserList = () => {
 
   return (
     <div className="user-list">
-      {users.map((user, index) => (
-        <div key={index} className="user">
+      <button className="update-now-button" onClick={handleUpdateNow}>
+        &#x21bb; {/* Unicode character for a refresh symbol */}
+      </button>
+      {users.map((user) => (
+        <div key={user.id} className="user">
           <span className="name">{user.name}</span>
           <span className={`status ${user.status}`}></span>
         </div>

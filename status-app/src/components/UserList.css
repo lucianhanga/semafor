@@ -6,6 +6,21 @@
   height: 100%; /* Ensure the list takes the full height of the container */
 }
 
+.update-now-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px;
+  margin-bottom: 20px; /* Add margin to create space between the button and the list */
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 5px;
+}
+
+.update-now-button:hover {
+  background-color: #0056b3;
+}
+
 .user {
   display: flex;
   align-items: center;

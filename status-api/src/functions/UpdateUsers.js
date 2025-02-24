@@ -14,6 +14,55 @@ const msalConfig = {
 
 const cca = new ConfidentialClientApplication(msalConfig);
 const usersFilePath = path.join(__dirname, 'users.json');
+const lockFilePath = path.join(__dirname, 'users.lock');
+
+const acquireLock = async (filePath, retries = 3, delay = 1000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await fs.writeFile(filePath, 'locked', { flag: 'wx' });
+      return;
+    } catch (err) {
+      if (err.code === 'EEXIST') {
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          throw new Error('Failed to acquire lock');
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
+};
+
+const releaseLock = async (filePath) => {
+  try {
+    await fs.unlink(filePath);
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      throw err;
+    }
+  }
+};
+
+const readFileWithLock = async (filePath) => {
+  await acquireLock(lockFilePath);
+  try {
+    const content = await fs.readFile(filePath, 'utf8');
+    return content;
+  } finally {
+    await releaseLock(lockFilePath);
+  }
+};
+
+const writeFileWithLock = async (filePath, data) => {
+  await acquireLock(lockFilePath);
+  try {
+    await fs.writeFile(filePath, data);
+  } finally {
+    await releaseLock(lockFilePath);
+  }
+};
 
 app.http('UpdateUsers', {
   methods: ['GET', 'POST'],
@@ -50,7 +99,7 @@ app.http('UpdateUsers', {
 
       let storedUsers = [];
       try {
-        const usersFileContent = await fs.readFile(usersFilePath, 'utf8');
+        const usersFileContent = await readFileWithLock(usersFilePath);
         storedUsers = JSON.parse(usersFileContent);
       } catch (err) {
         context.log("No existing users file found, creating a new one.");
@@ -75,7 +124,7 @@ app.http('UpdateUsers', {
         }
       });
 
-      await fs.writeFile(usersFilePath, JSON.stringify(updatedUsers, null, 2));
+      await writeFileWithLock(usersFilePath, JSON.stringify(updatedUsers, null, 2));
       context.log("Users file updated successfully.");
 
       context.log("Users processed successfully.");
@@ -93,8 +142,8 @@ app.http('UpdateUsers', {
     } catch (error) {
       context.log("Error occurred:", error.message);
       return {
-        return: 500,
-        body: JSON.stringify({ errory: error.message }),
+        status: 500,
+        body: JSON.stringify({ error: error.message }),
         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*", // Add CORS header
