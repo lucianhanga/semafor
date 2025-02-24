@@ -8,10 +8,13 @@ const initialState = {
   error: null
 };
 
+// Get the API base URL from environment variables
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
 // Create an async thunk to fetch users from the API
 export const fetchUsers = createAsyncThunk('users/fetchUsers', async () => {
   console.log("Fetching users from API...");
-  const response = await fetch('http://localhost:7071/api/UpdateUsers');
+  const response = await fetch(`${API_BASE_URL}/UpdateUsers`);
   const data = await response.json();
   console.log("Users fetched from API:", data.users);
   return data.users;
@@ -22,7 +25,7 @@ export const updateUserStatus = createAsyncThunk('users/updateUserStatus', async
   const { currentUser } = getState().users;
   const updatedUser = { ...currentUser, status };
   console.log("Updating user status:", updatedUser);
-  const response = await fetch('http://localhost:7071/api/UpdateState', {
+  const response = await fetch(`${API_BASE_URL}/UpdateState`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
