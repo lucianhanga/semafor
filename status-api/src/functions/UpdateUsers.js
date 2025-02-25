@@ -77,7 +77,13 @@ app.http('UpdateUsers', {
           `);
 
           fetchedUsers.forEach(user => {
-            stmt.run(user.id, user.name, user.status);
+            db.get("SELECT id FROM users WHERE id = ?", [user.id], (err, row) => {
+              if (err) {
+                reject(err);
+              } else if (!row) {
+                stmt.run(user.id, user.name, user.status);
+              }
+            });
           });
 
           stmt.finalize((err) => {
@@ -101,7 +107,6 @@ app.http('UpdateUsers', {
       });
 
       context.log("Users fetched successfully.");
-      // add a log statement to see the fetched users
       context.log("Before returning users:", JSON.stringify(users, null, 2));
 
       return {

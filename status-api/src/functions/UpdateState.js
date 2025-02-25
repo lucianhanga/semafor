@@ -81,6 +81,9 @@ app.http('UpdateState', {
         });
       });
 
+      // log  the users
+      context.log("Users:", JSON.stringify(users, null, 2));
+
       return {
         status: 200,
         body: JSON.stringify({ users }),
