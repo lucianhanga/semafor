@@ -9,7 +9,7 @@ const StatusSelector = () => {
 
   const statusColors = {
     absent: "#ff4d4d",
-    lead: "#ffa500",
+    lead: "#ff00ff",
     busy: "#ffcc00",
     available: "#4caf50",
   };

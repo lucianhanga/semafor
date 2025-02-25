@@ -25,7 +25,7 @@
   }
   
   .absent { background-color: red; color: white; }
-  .lead { background-color: rgb(255, 0, 255); color: black; }
+  .lead { background-color: rgb(247, 0, 255); color: black; }
   .busy { background-color: yellow; color: black; }
   .available { background-color: green; color: white; }
   
