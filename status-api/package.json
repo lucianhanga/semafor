@@ -9,8 +9,8 @@
   "dependencies": {
     "@azure/functions": "^4.0.0",
     "@azure/msal-node": "^3.2.3",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.7"
   },
-  "devDependencies": {},
   "main": "src/{index.js,functions/*.js}"
 }

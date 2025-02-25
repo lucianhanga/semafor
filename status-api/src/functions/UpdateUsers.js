@@ -1,7 +1,7 @@
 const { app } = require('@azure/functions');
 const { ConfidentialClientApplication } = require("@azure/msal-node");
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const fs = require('fs').promises;
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 const msalConfig = {
@@ -13,59 +13,29 @@ const msalConfig = {
 };
 
 const cca = new ConfidentialClientApplication(msalConfig);
-const usersFilePath = path.join(__dirname, 'users.json');
-const lockFilePath = path.join(__dirname, 'users.lock');
+const dbFilePath = path.join(__dirname, 'users.db');
 
-const acquireLock = async (filePath, retries = 3, delay = 1000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await fs.writeFile(filePath, 'locked', { flag: 'wx' });
-      return;
-    } catch (err) {
-      if (err.code === 'EEXIST') {
-        if (i < retries - 1) {
-          await new Promise(resolve => setTimeout(resolve, delay));
-        } else {
-          throw new Error('Failed to acquire lock');
-        }
-      } else {
-        throw err;
+// Initialize the database
+const db = new sqlite3.Database(dbFilePath, (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        status TEXT
+      )
+    `, (err) => {
+      if (err) {
+        console.error('Error creating table:', err.message);
       }
-    }
+    });
   }
-};
-
-const releaseLock = async (filePath) => {
-  try {
-    await fs.unlink(filePath);
-  } catch (err) {
-    if (err.code !== 'ENOENT') {
-      throw err;
-    }
-  }
-};
-
-const readFileWithLock = async (filePath) => {
-  await acquireLock(lockFilePath);
-  try {
-    const content = await fs.readFile(filePath, 'utf8');
-    return content;
-  } finally {
-    await releaseLock(lockFilePath);
-  }
-};
-
-const writeFileWithLock = async (filePath, data) => {
-  await acquireLock(lockFilePath);
-  try {
-    await fs.writeFile(filePath, data);
-  } finally {
-    await releaseLock(lockFilePath);
-  }
-};
+});
 
 app.http('UpdateUsers', {
-  methods: ['GET', 'POST'],
+  methods: ['GET'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
     context.log(`Http function processed request for url "${request.url}"`);
@@ -89,7 +59,6 @@ app.http('UpdateUsers', {
 
       const data = await response.json();
       context.log("Users fetched successfully.");
-      context.log("Response from Microsoft Graph:", JSON.stringify(data, null, 2));
 
       const fetchedUsers = data.value.map(user => ({
         id: user.id,
@@ -97,43 +66,47 @@ app.http('UpdateUsers', {
         status: "absent", // Default status set to "absent"
       }));
 
-      let storedUsers = [];
-      try {
-        const usersFileContent = await readFileWithLock(usersFilePath);
-        storedUsers = JSON.parse(usersFileContent);
-      } catch (err) {
-        context.log("No existing users file found, creating a new one.");
-      }
+      await new Promise((resolve, reject) => {
+        db.serialize(() => {
+          const stmt = db.prepare(`
+            INSERT INTO users (id, name, status)
+            VALUES (?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              name = excluded.name,
+              status = excluded.status
+          `);
 
-      const updatedUsers = [...storedUsers];
+          fetchedUsers.forEach(user => {
+            stmt.run(user.id, user.name, user.status);
+          });
 
-      // Add new users
-      fetchedUsers.forEach(fetchedUser => {
-        if (!storedUsers.some(storedUser => storedUser.id === fetchedUser.id)) {
-          updatedUsers.push(fetchedUser);
-        }
+          stmt.finalize((err) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        });
       });
 
-      // Remove missing users
-      storedUsers.forEach(storedUser => {
-        if (!fetchedUsers.some(fetchedUser => fetchedUser.id === storedUser.id)) {
-          const index = updatedUsers.findIndex(user => user.id === storedUser.id);
-          if (index !== -1) {
-            updatedUsers.splice(index, 1);
+      const users = await new Promise((resolve, reject) => {
+        db.all("SELECT * FROM users", [], (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows);
           }
-        }
+        });
       });
 
-      await writeFileWithLock(usersFilePath, JSON.stringify(updatedUsers, null, 2));
-      context.log("Users file updated successfully.");
+      context.log("Users fetched successfully.");
+      // add a log statement to see the fetched users
+      context.log("Before returning users:", JSON.stringify(users, null, 2));
 
-      context.log("Users processed successfully.");
-      context.log("Users:", JSON.stringify(updatedUsers, null, 2));
-
-      context.log("Response set successfully.");
       return {
         status: 200,
-        body: JSON.stringify({ users: updatedUsers }),
+        body: JSON.stringify({ users }),
         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*", // Add CORS header

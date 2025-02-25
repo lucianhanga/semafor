@@ -1,57 +1,27 @@
 const { app } = require('@azure/functions');
-const fs = require('fs').promises;
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const usersFilePath = path.join(__dirname, 'users.json');
-const lockFilePath = path.join(__dirname, 'users.lock');
+const dbFilePath = path.join(__dirname, 'users.db');
 
-const acquireLock = async (filePath, retries = 3, delay = 1000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await fs.writeFile(filePath, 'locked', { flag: 'wx' });
-      return;
-    } catch (err) {
-      if (err.code === 'EEXIST') {
-        if (i < retries - 1) {
-          await new Promise(resolve => setTimeout(resolve, delay));
-        } else {
-          throw new Error('Failed to acquire lock');
-        }
-      } else {
-        throw err;
+// Initialize the database
+const db = new sqlite3.Database(dbFilePath, (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        status TEXT
+      )
+    `, (err) => {
+      if (err) {
+        console.error('Error creating table:', err.message);
       }
-    }
+    });
   }
-};
-
-const releaseLock = async (filePath) => {
-  try {
-    await fs.unlink(filePath);
-  } catch (err) {
-    if (err.code !== 'ENOENT') {
-      throw err;
-    }
-  }
-};
-
-const readFileWithLock = async (filePath) => {
-  await acquireLock(lockFilePath);
-  try {
-    const content = await fs.readFile(filePath, 'utf8');
-    return content;
-  } finally {
-    await releaseLock(lockFilePath);
-  }
-};
-
-const writeFileWithLock = async (filePath, data) => {
-  await acquireLock(lockFilePath);
-  try {
-    await fs.writeFile(filePath, data);
-  } finally {
-    await releaseLock(lockFilePath);
-  }
-};
+});
 
 app.http('UpdateState', {
   methods: ['POST'],
@@ -63,25 +33,54 @@ app.http('UpdateState', {
       const requestBody = await request.json();
       context.log("Request body:", JSON.stringify(requestBody, null, 2));
 
-      let users = [];
-      try {
-        const usersFileContent = await readFileWithLock(usersFilePath);
-        users = JSON.parse(usersFileContent);
-      } catch (err) {
-        context.log("No existing users file found, creating a new one.");
-      }
+      const { id, name, status } = requestBody;
 
-      // Find the user by ID and update the user data
-      const userIndex = users.findIndex(user => user.id === requestBody.id);
-      if (userIndex !== -1) {
-        users[userIndex] = { ...users[userIndex], ...requestBody };
-        await writeFileWithLock(usersFilePath, JSON.stringify(users, null, 2));
-        context.log("Users file updated successfully.");
-      } else {
-        context.log("User ID not found, no updates made.");
-      }
+      await new Promise((resolve, reject) => {
+        db.serialize(() => {
+          db.run(`
+            INSERT INTO users (id, name, status)
+            VALUES (?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              name = excluded.name,
+              status = excluded.status
+          `, [id, name, status], (err) => {
+            if (err) {
+              context.log("Error updating user:", err.message);
+              reject({
+                status: 500,
+                body: JSON.stringify({ error: err.message }),
+                headers: {
+                  "Content-Type": "application/json",
+                  "Access-Control-Allow-Origin": "*", // Add CORS header
+                }
+              });
+            } else {
+              context.log("User updated successfully.");
+              resolve();
+            }
+          });
+        });
+      });
 
-      context.log("Response set successfully.");
+      const users = await new Promise((resolve, reject) => {
+        db.all("SELECT * FROM users", [], (err, rows) => {
+          if (err) {
+            context.log("Error fetching users:", err.message);
+            reject({
+              status: 500,
+              body: JSON.stringify({ error: err.message }),
+              headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*", // Add CORS header
+              }
+            });
+          } else {
+            context.log("Users fetched successfully.");
+            resolve(rows);
+          }
+        });
+      });
+
       return {
         status: 200,
         body: JSON.stringify({ users }),
