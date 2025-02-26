@@ -29,9 +29,6 @@ const StatusSelector = () => {
         <button className={`status-button lead ${currentStatus === "lead" ? "active" : ""}`} onClick={() => handleStatusChange("lead")}>
           Con Lead
         </button>
-        <button className={`status-button busy ${currentStatus === "busy" ? "active" : ""}`} onClick={() => handleStatusChange("busy")}>
-          Impegnato
-        </button>
         <button className={`status-button available ${currentStatus === "available" ? "active" : ""}`} onClick={() => handleStatusChange("available")}>
           Disponibile
         </button>
