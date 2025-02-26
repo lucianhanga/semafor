@@ -15,24 +15,38 @@ const msalConfig = {
 const cca = new ConfidentialClientApplication(msalConfig);
 const dbFilePath = path.join(__dirname, 'users.db');
 
-// Initialize the database
-const db = new sqlite3.Database(dbFilePath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    db.run(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        name TEXT,
-        status TEXT
-      )
-    `, (err) => {
-      if (err) {
-        console.error('Error creating table:', err.message);
-      }
-    });
-  }
-});
+// Function to initialize the database with retry mechanism
+const initializeDatabase = async (retries = 10, delay = 100) => {
+  return new Promise((resolve, reject) => {
+    const tryOpenDatabase = (attempt) => {
+      const db = new sqlite3.Database(dbFilePath, (err) => {
+        if (err) {
+          if (attempt < retries) {
+            console.error(`Error opening database (attempt ${attempt + 1}):`, err.message);
+            setTimeout(() => tryOpenDatabase(attempt + 1), delay);
+          } else {
+            reject(new Error('Failed to open database after multiple attempts'));
+          }
+        } else {
+          db.run(`
+            CREATE TABLE IF NOT EXISTS users (
+              id TEXT PRIMARY KEY,
+              name TEXT,
+              status TEXT
+            )
+          `, (err) => {
+            if (err) {
+              reject(new Error('Error creating table:', err.message));
+            } else {
+              resolve(db);
+            }
+          });
+        }
+      });
+    };
+    tryOpenDatabase(0);
+  });
+};
 
 app.http('UpdateUsers', {
   methods: ['GET'],
@@ -65,6 +79,8 @@ app.http('UpdateUsers', {
         name: user.displayName,
         status: "absent", // Default status set to "absent"
       }));
+
+      const db = await initializeDatabase();
 
       await new Promise((resolve, reject) => {
         db.serialize(() => {

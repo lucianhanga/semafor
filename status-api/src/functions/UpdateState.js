@@ -1,33 +1,35 @@
 const { app } = require('@azure/functions');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
 const dbFilePath = path.join(__dirname, 'users.db');
-
-// Initialize the database
-const db = new sqlite3.Database(dbFilePath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    db.run(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        name TEXT,
-        status TEXT
-      )
-    `, (err) => {
-      if (err) {
-        console.error('Error creating table:', err.message);
-      }
-    });
-  }
-});
 
 app.http('UpdateState', {
   methods: ['POST'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
     context.log(`Http function processed request for url "${request.url}"`);
+
+    // Check if the database file exists
+    if (!fs.existsSync(dbFilePath)) {
+      context.log("Database file does not exist.");
+      return {
+        status: 500,
+        body: JSON.stringify({ error: "Database file does not exist." }),
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*", // Add CORS header
+        }
+      };
+    }
+
+    // Initialize the database
+    const db = new sqlite3.Database(dbFilePath, (err) => {
+      if (err) {
+        console.error('Error opening database:', err.message);
+      }
+    });
 
     try {
       const requestBody = await request.json();
@@ -81,7 +83,7 @@ app.http('UpdateState', {
         });
       });
 
-      // log  the users
+      // log the users
       context.log("Users:", JSON.stringify(users, null, 2));
 
       return {
