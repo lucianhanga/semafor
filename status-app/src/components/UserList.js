@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Tooltip } from "react-tooltip";
 import { fetchUsers } from "../redux/userSlice";
 import UpdateButton from "./UpdateButton";
 import StatusBar from "./StatusBar";
@@ -34,9 +35,10 @@ const UserList = () => {
       <UpdateButton />
       <StatusBar />
       {userStatus !== 'failed' && users.map((user) => (
-        <div key={user.id} className="user">
+        <div key={user.id} className="user" data-tooltip-id={`tooltip-${user.id}`} data-tooltip-content={user.text}>
           <span className="name">{user.name}</span>
           <span className={`status ${user.status}`}></span>
+          <Tooltip id={`tooltip-${user.id}`} />
         </div>
       ))}
     </div>

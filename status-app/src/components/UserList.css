@@ -35,7 +35,7 @@
   align-items: center;
   justify-content: space-between;
   width: 200px;
-  padding: 4px 8px; /* Reduce padding */
+  padding: 10px;
   background: white;
   border-radius: 8px;
   box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
@@ -43,18 +43,21 @@
   font-size: 12px; /* Reduce font size */
   height: 24px; /* Reduce height */
   line-height: 20px; /* Adjust line height */
+  position: relative;
+  border-bottom: 1px solid #ccc;
 }
 
 .name {
   font-weight: bold;
-  margin-right: 8px;
+  margin-right: 10px;
 }
 
 .status {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: 2px transparent black;
+  display: inline-block;
 }
 
 .absent { background-color: red; }
@@ -76,4 +79,13 @@
 
 .status.busy {
   background-color: gray;
+}
+
+/* Tooltip styles */
+.__react_component_tooltip {
+  font-size: 14px;
+  padding: 5px 10px;
+  background: #333;
+  color: #fff;
+  border-radius: 4px;
 }

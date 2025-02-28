@@ -15,36 +15,49 @@ const msalConfig = {
 const cca = new ConfidentialClientApplication(msalConfig);
 const dbFilePath = path.join(__dirname, 'users.db');
 
-// Function to initialize the database with retry mechanism
-const initializeDatabase = async (retries = 10, delay = 100) => {
+// Function to initialize the database
+const initializeDatabase = async () => {
   return new Promise((resolve, reject) => {
-    const tryOpenDatabase = (attempt) => {
-      const db = new sqlite3.Database(dbFilePath, sqlite3.OPEN_READWRITE, (err) => {
-        if (err) {
-          if (attempt < retries) {
-            console.error(`Error opening database (attempt ${attempt + 1}):`, err.message);
-            setTimeout(() => tryOpenDatabase(attempt + 1), delay);
+    const db = new sqlite3.Database(dbFilePath, (err) => {
+      if (err) {
+        console.error('Error opening database:', err.message);
+        const newDb = new sqlite3.Database(dbFilePath, (err) => {
+          if (err) {
+            reject(new Error('Failed to create new database:', err.message));
           } else {
-            reject(new Error('Failed to open database after multiple attempts'));
+            newDb.run(`
+              CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                status TEXT,
+                text TEXT
+              )
+            `, (err) => {
+              if (err) {
+                reject(new Error('Error creating table:', err.message));
+              } else {
+                resolve(newDb);
+              }
+            });
           }
-        } else {
-          db.run(`
-            CREATE TABLE IF NOT EXISTS users (
-              id TEXT PRIMARY KEY,
-              name TEXT,
-              status TEXT
-            )
-          `, (err) => {
-            if (err) {
-              reject(new Error('Error creating table:', err.message));
-            } else {
-              resolve(db);
-            }
-          });
-        }
-      });
-    };
-    tryOpenDatabase(0);
+        });
+      } else {
+        db.run(`
+          CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            status TEXT,
+            text TEXT
+          )
+        `, (err) => {
+          if (err) {
+            reject(new Error('Error creating table:', err.message));
+          } else {
+            resolve(db);
+          }
+        });
+      }
+    });
   });
 };
 
@@ -77,7 +90,8 @@ app.http('UpdateUsers', {
       const fetchedUsers = data.value.map(user => ({
         id: user.id,
         name: user.displayName,
-        status: "absent", // Default status set to 
+        status: "absent", // Default status set to "absent"
+        text: "" // Default text set to empty string
       }));
 
       const db = await initializeDatabase();
@@ -85,27 +99,34 @@ app.http('UpdateUsers', {
       await new Promise((resolve, reject) => {
         db.serialize(() => {
           const stmt = db.prepare(`
-            INSERT INTO users (id, name, status)
-            VALUES (?, ?, ?)
-            ON CONFLICT(id) DO NOTHING
+            INSERT INTO users (id, name, status, text)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              name = excluded.name,
+              status = excluded.status,
+              text = CASE WHEN excluded.text IS NOT NULL THEN excluded.text ELSE users.text END
           `);
 
+          let completed = 0;
           fetchedUsers.forEach(user => {
-            db.get("SELECT id FROM users WHERE id = ?", [user.id], (err, row) => {
+            stmt.run(user.id, user.name, user.status, user.text, (err) => {
               if (err) {
                 reject(err);
-              } else if (!row) {
-                stmt.run(user.id, user.name, user.status);
+              } else {
+                completed++;
+                if (completed === fetchedUsers.length) {
+                  stmt.finalize((err) => {
+                    if (err) {
+                      reject(err);
+                    } else {
+                      resolve();
+                    }
+                  });
+                }
               }
-            });
-          });
 
-          stmt.finalize((err) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
+              
+            });
           });
         });
       });

@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 // Define the initial state
 const initialState = {
   users: [],
-  currentUser: { id: "", name: "", status: "available" },
+  currentUser: { id: "", name: "", status: "available", text: "" },
   status: 'idle',
   error: null,
   usersHash: null // Add a field to store the hash of the users list
@@ -53,10 +53,26 @@ export const fetchUsers = createAsyncThunk('users/fetchUsers', async (_, { getSt
   }
 });
 
+// Create an async thunk to fetch the current user
+export const fetchCurrentUser = createAsyncThunk('users/fetchCurrentUser', async (_, { getState, rejectWithValue }) => {
+  console.log("Fetching current user from API...");
+  try {
+    const response = await fetch(`${API_BASE_URL}/CurrentUser`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch current user');
+    }
+    const data = await response.json();
+    console.log("Current user fetched from API:", data);
+    return data;
+  } catch (error) {
+    return rejectWithValue(error.message);
+  }
+});
+
 // Create an async thunk to update the user status
-export const updateUserStatus = createAsyncThunk('users/updateUserStatus', async (status, { getState }) => {
+export const updateUserStatus = createAsyncThunk('users/updateUserStatus', async ({ status, text }, { getState }) => {
   const { currentUser } = getState().users;
-  const updatedUser = { ...currentUser, status };
+  const updatedUser = { ...currentUser, status, text };
   console.log("Updating user status:", updatedUser);
   const response = await fetch(`${API_BASE_URL}/UpdateState`, {
     method: 'POST',
@@ -104,6 +120,20 @@ const userSlice = createSlice({
         state.status = 'failed';
         state.error = action.payload;
         state.users = []; // Clear the user list on error
+      })
+      .addCase(fetchCurrentUser.pending, (state) => {
+        console.log("Fetching current user: pending");
+        state.status = 'loading';
+      })
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        console.log("Fetching current user: succeeded");
+        state.status = 'succeeded';
+        state.currentUser = action.payload;
+      })
+      .addCase(fetchCurrentUser.rejected, (state, action) => {
+        console.log("Fetching current user: failed", action.payload);
+        state.status = 'failed';
+        state.error = action.payload;
       })
       .addCase(updateUserStatus.pending, (state) => {
         console.log("Updating user status: pending");
