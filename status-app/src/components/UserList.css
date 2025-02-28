@@ -58,8 +58,8 @@
 }
 
 .absent { background-color: red; }
-.lead { background-color: rgb(225, 0, 255); }
-.busy { background-color: yellow; }
+.lead { background-color: yellow;}
+.busy { background-color: gray; }
 .available { background-color: green; }
 
 .status.available {
@@ -67,7 +67,7 @@
 }
 
 .status.lead {
-  background-color: #cc00ff;
+  background-color: yellow;
 }
 
 .status.absent {
@@ -75,5 +75,5 @@
 }
 
 .status.busy {
-  background-color: #ffcc00;
+  background-color: gray;
 }

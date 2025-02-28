@@ -9,8 +9,8 @@ const StatusSelector = () => {
 
   const statusColors = {
     absent: "#ff4d4d",
-    lead: "#ff00ff",
-    busy: "#ffcc00",
+    lead: "#ffff00",
+    busy: "#cccccc",
     available: "#4caf50",
   };
 
@@ -33,7 +33,7 @@ const StatusSelector = () => {
           Disponibile
         </button>
       </div>
-      <div className="status-display" style={{ backgroundColor: statusColors[currentStatus] }}>
+      <div className="status-display" style={{ backgroundColor: statusColors[currentStatus], color: "#000000" }}>
         {currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}
       </div>
     </div>

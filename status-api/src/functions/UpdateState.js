@@ -25,9 +25,18 @@ app.http('UpdateState', {
     }
 
     // Initialize the database
-    const db = new sqlite3.Database(dbFilePath, (err) => {
+    const db = new sqlite3.Database(dbFilePath, sqlite3.OPEN_READWRITE, (err) => {
       if (err) {
         console.error('Error opening database:', err.message);
+        // Return an error response
+        return {
+          status: 500,
+          body: JSON.stringify({ error: err.message }),
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*", // Add CORS header
+          }
+        };
       }
     });
 
@@ -40,12 +49,10 @@ app.http('UpdateState', {
       await new Promise((resolve, reject) => {
         db.serialize(() => {
           db.run(`
-            INSERT INTO users (id, name, status)
-            VALUES (?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-              name = excluded.name,
-              status = excluded.status
-          `, [id, name, status], (err) => {
+            UPDATE users
+            SET status = ?
+            WHERE id = ?;
+          `, [status, id], (err) => {
             if (err) {
               context.log("Error updating user:", err.message);
               reject({

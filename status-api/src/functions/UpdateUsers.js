@@ -19,7 +19,7 @@ const dbFilePath = path.join(__dirname, 'users.db');
 const initializeDatabase = async (retries = 10, delay = 100) => {
   return new Promise((resolve, reject) => {
     const tryOpenDatabase = (attempt) => {
-      const db = new sqlite3.Database(dbFilePath, (err) => {
+      const db = new sqlite3.Database(dbFilePath, sqlite3.OPEN_READWRITE, (err) => {
         if (err) {
           if (attempt < retries) {
             console.error(`Error opening database (attempt ${attempt + 1}):`, err.message);
@@ -77,7 +77,7 @@ app.http('UpdateUsers', {
       const fetchedUsers = data.value.map(user => ({
         id: user.id,
         name: user.displayName,
-        status: "absent", // Default status set to "absent"
+        status: "absent", // Default status set to 
       }));
 
       const db = await initializeDatabase();
@@ -87,9 +87,7 @@ app.http('UpdateUsers', {
           const stmt = db.prepare(`
             INSERT INTO users (id, name, status)
             VALUES (?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-              name = excluded.name,
-              status = excluded.status
+            ON CONFLICT(id) DO NOTHING
           `);
 
           fetchedUsers.forEach(user => {
