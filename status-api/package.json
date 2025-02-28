@@ -9,6 +9,7 @@
   "dependencies": {
     "@azure/functions": "^4.0.0",
     "@azure/msal-node": "^3.2.3",
+    "@azure/storage-blob": "^12.26.0",
     "node-fetch": "^3.3.2",
     "sqlite3": "^5.1.7"
   },

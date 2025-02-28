@@ -3,6 +3,8 @@ const { ConfidentialClientApplication } = require("@azure/msal-node");
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
+const { BlobServiceClient } = require('@azure/storage-blob');
 
 const msalConfig = {
   auth: {
@@ -14,6 +16,45 @@ const msalConfig = {
 
 const cca = new ConfidentialClientApplication(msalConfig);
 const dbFilePath = path.join(__dirname, 'users.db');
+const containerName = "function-disk";
+const blobName = "users.db";
+
+// Function to download the database file from Azure Storage
+const downloadDatabase = async () => {
+  const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+  if (await blockBlobClient.exists()) {
+    const downloadBlockBlobResponse = await blockBlobClient.download(0);
+    const downloaded = await streamToBuffer(downloadBlockBlobResponse.readableStreamBody);
+    fs.writeFileSync(dbFilePath, downloaded);
+  }
+};
+
+// Function to upload the database file to Azure Storage
+const uploadDatabase = async () => {
+  const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+  const data = fs.readFileSync(dbFilePath);
+  await blockBlobClient.upload(data, data.length);
+};
+
+// Helper function to convert stream to buffer
+const streamToBuffer = async (readableStream) => {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    readableStream.on("data", (data) => {
+      chunks.push(data instanceof Buffer ? data : Buffer.from(data));
+    });
+    readableStream.on("end", () => {
+      resolve(Buffer.concat(chunks));
+    });
+    readableStream.on("error", reject);
+  });
+};
 
 // Function to initialize the database
 const initializeDatabase = async () => {
@@ -94,7 +135,13 @@ app.http('UpdateUsers', {
         text: "" // Default text set to empty string
       }));
 
+      // Download the database file from Azure Storage
+      context.log("Downloading database from Azure Storage...");
+      await downloadDatabase();
+      context.log("Database downloaded successfully.");
+
       const db = await initializeDatabase();
+      context.log("Database initialized successfully.");
 
       await new Promise((resolve, reject) => {
         db.serialize(() => {
@@ -111,21 +158,22 @@ app.http('UpdateUsers', {
           fetchedUsers.forEach(user => {
             stmt.run(user.id, user.name, user.status, user.text, (err) => {
               if (err) {
+                context.log(`Error running statement for user ${user.id}:`, err.message);
                 reject(err);
               } else {
                 completed++;
                 if (completed === fetchedUsers.length) {
                   stmt.finalize((err) => {
                     if (err) {
+                      context.log("Error finalizing statement:", err.message);
                       reject(err);
                     } else {
+                      context.log("Statement finalized successfully.");
                       resolve();
                     }
                   });
                 }
               }
-
-              
             });
           });
         });
@@ -134,12 +182,19 @@ app.http('UpdateUsers', {
       const users = await new Promise((resolve, reject) => {
         db.all("SELECT * FROM users", [], (err, rows) => {
           if (err) {
+            context.log("Error fetching users from database:", err.message);
             reject(err);
           } else {
+            context.log("Users fetched from database successfully.");
             resolve(rows);
           }
         });
       });
+
+      // Upload the updated database file to Azure Storage
+      context.log("Uploading updated database to Azure Storage...");
+      await uploadDatabase();
+      context.log("Database uploaded successfully.");
 
       context.log("Users fetched successfully.");
       context.log("Before returning users:", JSON.stringify(users, null, 2));

@@ -2,8 +2,48 @@ const { app } = require('@azure/functions');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const { BlobServiceClient } = require('@azure/storage-blob');
 
 const dbFilePath = path.join(__dirname, 'users.db');
+const containerName = "function-disk";
+const blobName = "users.db";
+
+// Function to download the database file from Azure Storage
+const downloadDatabase = async () => {
+  const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+  if (await blockBlobClient.exists()) {
+    const downloadBlockBlobResponse = await blockBlobClient.download(0);
+    const downloaded = await streamToBuffer(downloadBlockBlobResponse.readableStreamBody);
+    fs.writeFileSync(dbFilePath, downloaded);
+  }
+};
+
+// Function to upload the database file to Azure Storage
+const uploadDatabase = async () => {
+  const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+  const data = fs.readFileSync(dbFilePath);
+  await blockBlobClient.upload(data, data.length);
+};
+
+// Helper function to convert stream to buffer
+const streamToBuffer = async (readableStream) => {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    readableStream.on("data", (data) => {
+      chunks.push(data instanceof Buffer ? data : Buffer.from(data));
+    });
+    readableStream.on("end", () => {
+      resolve(Buffer.concat(chunks));
+    });
+    readableStream.on("error", reject);
+  });
+};
 
 app.http('UpdateState', {
   methods: ['POST'],
@@ -11,27 +51,17 @@ app.http('UpdateState', {
   handler: async (request, context) => {
     context.log(`Http function processed request for url "${request.url}"`);
 
-    // Check if the database file exists
-    if (!fs.existsSync(dbFilePath)) {
-      context.log("Database file does not exist.");
-      return {
-        status: 500,
-        body: JSON.stringify({ error: "Database file does not exist." }),
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*", // Add CORS header
-        }
-      };
-    }
-
-    // Initialize the database
-    const db = new sqlite3.Database(dbFilePath, (err) => {
-      if (err) {
-        console.error('Error opening database:', err.message);
-      }
-    });
-
     try {
+      // Download the database file from Azure Storage
+      await downloadDatabase();
+
+      // Initialize the database
+      const db = new sqlite3.Database(dbFilePath, (err) => {
+        if (err) {
+          console.error('Error opening database:', err.message);
+        }
+      });
+
       const requestBody = await request.json();
       context.log("Request body:", JSON.stringify(requestBody, null, 2));
 
@@ -83,6 +113,9 @@ app.http('UpdateState', {
           }
         });
       });
+
+      // Upload the updated database file to Azure Storage
+      await uploadDatabase();
 
       // log the users
       context.log("Users:", JSON.stringify(users, null, 2));
