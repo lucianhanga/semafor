@@ -93,6 +93,11 @@ const userSlice = createSlice({
         state.status = 'succeeded';
         state.users = action.payload.users;
         state.usersHash = action.payload.usersHash;
+        // Update the current user's status if they exist in the fetched list
+        const updatedCurrentUser = state.users.find(user => user.id === state.currentUser.id);
+        if (updatedCurrentUser) {
+          state.currentUser.status = updatedCurrentUser.status;
+        }
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         console.log("Fetching users: failed", action.payload);
