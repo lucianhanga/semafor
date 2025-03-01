@@ -1,10 +1,7 @@
 const { app } = require('@azure/functions');
 const { ConfidentialClientApplication } = require("@azure/msal-node");
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const fs = require('fs');
-const { BlobServiceClient } = require('@azure/storage-blob');
+const { TableClient } = require('@azure/data-tables');
 
 const msalConfig = {
   auth: {
@@ -15,92 +12,9 @@ const msalConfig = {
 };
 
 const cca = new ConfidentialClientApplication(msalConfig);
-const dbFilePath = path.join(__dirname, 'users.db');
-const containerName = "function-disk";
-const blobName = "users.db";
-
-// Function to download the database file from Azure Storage
-const downloadDatabase = async () => {
-  const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
-  const containerClient = blobServiceClient.getContainerClient(containerName);
-  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-  if (await blockBlobClient.exists()) {
-    const downloadBlockBlobResponse = await blockBlobClient.download(0);
-    const downloaded = await streamToBuffer(downloadBlockBlobResponse.readableStreamBody);
-    fs.writeFileSync(dbFilePath, downloaded);
-  }
-};
-
-// Function to upload the database file to Azure Storage
-const uploadDatabase = async () => {
-  const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
-  const containerClient = blobServiceClient.getContainerClient(containerName);
-  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-  const data = fs.readFileSync(dbFilePath);
-  await blockBlobClient.upload(data, data.length);
-};
-
-// Helper function to convert stream to buffer
-const streamToBuffer = async (readableStream) => {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    readableStream.on("data", (data) => {
-      chunks.push(data instanceof Buffer ? data : Buffer.from(data));
-    });
-    readableStream.on("end", () => {
-      resolve(Buffer.concat(chunks));
-    });
-    readableStream.on("error", reject);
-  });
-};
-
-// Function to initialize the database
-const initializeDatabase = async () => {
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(dbFilePath, (err) => {
-      if (err) {
-        console.error('Error opening database:', err.message);
-        const newDb = new sqlite3.Database(dbFilePath, (err) => {
-          if (err) {
-            reject(new Error('Failed to create new database:', err.message));
-          } else {
-            newDb.run(`
-              CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY,
-                name TEXT,
-                status TEXT,
-                text TEXT
-              )
-            `, (err) => {
-              if (err) {
-                reject(new Error('Error creating table:', err.message));
-              } else {
-                resolve(newDb);
-              }
-            });
-          }
-        });
-      } else {
-        db.run(`
-          CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            name TEXT,
-            status TEXT,
-            text TEXT
-          )
-        `, (err) => {
-          if (err) {
-            reject(new Error('Error creating table:', err.message));
-          } else {
-            resolve(db);
-          }
-        });
-      }
-    });
-  });
-};
+const tableName = "Users";
+const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const tableClient = TableClient.fromConnectionString(connectionString, tableName);
 
 app.http('UpdateUsers', {
   methods: ['GET'],
@@ -129,75 +43,37 @@ app.http('UpdateUsers', {
       context.log("Users fetched successfully.");
 
       const fetchedUsers = data.value.map(user => ({
-        id: user.id,
+        partitionKey: "Users",
+        rowKey: user.id,
         name: user.displayName,
         status: "absent", // Default status set to "absent"
         text: "" // Default text set to empty string
       }));
 
-      // Download the database file from Azure Storage
-      context.log("Downloading database from Azure Storage...");
-      await downloadDatabase();
-      context.log("Database downloaded successfully.");
-
-      const db = await initializeDatabase();
-      context.log("Database initialized successfully.");
-
-      await new Promise((resolve, reject) => {
-        db.serialize(() => {
-          const stmt = db.prepare(`
-            INSERT INTO users (id, name, status, text)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-              name = excluded.name,
-              status = excluded.status,
-              text = CASE WHEN excluded.text IS NOT NULL THEN excluded.text ELSE users.text END
-          `);
-
-          let completed = 0;
-          fetchedUsers.forEach(user => {
-            stmt.run(user.id, user.name, user.status, user.text, (err) => {
-              if (err) {
-                context.log(`Error running statement for user ${user.id}:`, err.message);
-                reject(err);
-              } else {
-                completed++;
-                if (completed === fetchedUsers.length) {
-                  stmt.finalize((err) => {
-                    if (err) {
-                      context.log("Error finalizing statement:", err.message);
-                      reject(err);
-                    } else {
-                      context.log("Statement finalized successfully.");
-                      resolve();
-                    }
-                  });
-                }
-              }
-            });
-          });
-        });
-      });
-
-      const users = await new Promise((resolve, reject) => {
-        db.all("SELECT * FROM users", [], (err, rows) => {
-          if (err) {
-            context.log("Error fetching users from database:", err.message);
-            reject(err);
+      context.log("Inserting or updating users in Azure Table Storage...");
+      for (const user of fetchedUsers) {
+        try {
+          // Check if the user already exists
+          await tableClient.getEntity(user.partitionKey, user.rowKey);
+          context.log(`User with ID ${user.rowKey} already exists. Skipping update.`);
+        } catch (error) {
+          if (error.statusCode === 404) {
+            // User does not exist, insert the user
+            await tableClient.upsertEntity(user, "Merge");
+            context.log(`User with ID ${user.rowKey} inserted successfully.`);
           } else {
-            context.log("Users fetched from database successfully.");
-            resolve(rows);
+            throw error;
           }
-        });
-      });
+        }
+      }
+      context.log("Users inserted or updated successfully.");
 
-      // Upload the updated database file to Azure Storage
-      context.log("Uploading updated database to Azure Storage...");
-      await uploadDatabase();
-      context.log("Database uploaded successfully.");
-
-      context.log("Users fetched successfully.");
-      context.log("Before returning users:", JSON.stringify(users, null, 2));
+      const users = [];
+      const entitiesIter = tableClient.listEntities();
+      for await (const entity of entitiesIter) {
+        users.push(entity);
+      }
+      context.log("Users fetched from Azure Table Storage successfully.");
 
       return {
         status: 200,

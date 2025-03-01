@@ -1,49 +1,9 @@
 const { app } = require('@azure/functions');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const fs = require('fs');
-const { BlobServiceClient } = require('@azure/storage-blob');
+const { TableClient } = require('@azure/data-tables');
 
-const dbFilePath = path.join(__dirname, 'users.db');
-const containerName = "function-disk";
-const blobName = "users.db";
-
-// Function to download the database file from Azure Storage
-const downloadDatabase = async () => {
-  const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
-  const containerClient = blobServiceClient.getContainerClient(containerName);
-  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-  if (await blockBlobClient.exists()) {
-    const downloadBlockBlobResponse = await blockBlobClient.download(0);
-    const downloaded = await streamToBuffer(downloadBlockBlobResponse.readableStreamBody);
-    fs.writeFileSync(dbFilePath, downloaded);
-  }
-};
-
-// Function to upload the database file to Azure Storage
-const uploadDatabase = async () => {
-  const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
-  const containerClient = blobServiceClient.getContainerClient(containerName);
-  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-  const data = fs.readFileSync(dbFilePath);
-  await blockBlobClient.upload(data, data.length);
-};
-
-// Helper function to convert stream to buffer
-const streamToBuffer = async (readableStream) => {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    readableStream.on("data", (data) => {
-      chunks.push(data instanceof Buffer ? data : Buffer.from(data));
-    });
-    readableStream.on("end", () => {
-      resolve(Buffer.concat(chunks));
-    });
-    readableStream.on("error", reject);
-  });
-};
+const tableName = "Users";
+const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const tableClient = TableClient.fromConnectionString(connectionString, tableName);
 
 app.http('UpdateState', {
   methods: ['POST'],
@@ -52,73 +12,47 @@ app.http('UpdateState', {
     context.log(`Http function processed request for url "${request.url}"`);
 
     try {
-      // Download the database file from Azure Storage
-      await downloadDatabase();
-
-      // Initialize the database
-      const db = new sqlite3.Database(dbFilePath, (err) => {
-        if (err) {
-          console.error('Error opening database:', err.message);
-        }
-      });
-
       const requestBody = await request.json();
       context.log("Request body:", JSON.stringify(requestBody, null, 2));
 
       const { id, status, text } = requestBody;
 
-      await new Promise((resolve, reject) => {
-        db.serialize(() => {
-          const updateQuery = `
-            UPDATE users
-            SET status = ?, text = COALESCE(?, text)
-            WHERE id = ?
-          `;
-          const params = [status, text !== undefined ? text : null, id];
-
-          db.run(updateQuery, params, (err) => {
-            if (err) {
-              context.log("Error updating user:", err.message);
-              reject({
-                status: 500,
-                body: JSON.stringify({ error: err.message }),
-                headers: {
-                  "Content-Type": "application/json",
-                  "Access-Control-Allow-Origin": "*", // Add CORS header
-                }
-              });
-            } else {
-              context.log("User updated successfully.");
-              resolve();
+      // Fetch the user entity from Azure Table Storage
+      let userEntity;
+      try {
+        userEntity = await tableClient.getEntity("Users", id);
+      } catch (error) {
+        if (error.statusCode === 404) {
+          context.log("User not found.");
+          return {
+            status: 404,
+            body: JSON.stringify({ error: "User not found" }),
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*", // Add CORS header
             }
-          });
-        });
-      });
+          };
+        } else {
+          throw error;
+        }
+      }
 
-      const users = await new Promise((resolve, reject) => {
-        db.all("SELECT * FROM users", [], (err, rows) => {
-          if (err) {
-            context.log("Error fetching users:", err.message);
-            reject({
-              status: 500,
-              body: JSON.stringify({ error: err.message }),
-              headers: {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*", // Add CORS header
-              }
-            });
-          } else {
-            context.log("Users fetched successfully.");
-            resolve(rows);
-          }
-        });
-      });
+      // Update the user entity
+      userEntity.status = status;
+      if (text !== undefined) {
+        userEntity.text = text;
+      }
 
-      // Upload the updated database file to Azure Storage
-      await uploadDatabase();
+      await tableClient.updateEntity(userEntity, "Merge");
+      context.log("User updated successfully.");
 
-      // log the users
-      context.log("Users:", JSON.stringify(users, null, 2));
+      // Fetch all users from Azure Table Storage
+      const users = [];
+      const entitiesIter = tableClient.listEntities();
+      for await (const entity of entitiesIter) {
+        users.push(entity);
+      }
+      context.log("Users fetched from Azure Table Storage successfully.");
 
       return {
         status: 200,
